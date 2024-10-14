@@ -2,11 +2,19 @@ import express from "express";
 import axios from "axios";
 import dotenv from 'dotenv';
 import cors from 'cors';
+import logger from './utils/logger.js';
+
 dotenv.config();
 
 const app = express(); 
 app.use(cors()); 
 const PORT = process.env.PORT || 5000;
+
+export const URLs = {
+    tmdb: "https://api.themoviedb.org/3",
+    image: "https://image.tmdb.org/t/p/w500",
+    jikan: "https://api.jikan.moe/v4"
+};
 
 const imageUrl = "https://image.tmdb.org/t/p/w500";
 const baseJikanUrl = "https://api.jikan.moe/v4";
@@ -158,13 +166,55 @@ app.get("/search-tv", async (request, response) => {
 /* =============================================== */
 /*                  Trending anime                 */
 /* =============================================== */
-app.get("/trending-anime", async (request, response) => {
-    try {
-        const trendingAnimeUrl = `${baseJikanUrl}/seasons/now`;
-        const trending = await axios.get(trendingAnimeUrl);
-        const trendingAnimeData = trending.data.data;
+app.get("/trending/anime", async (request, response) => {
+    let { page = 1, limit = 25, filter, sfw, unapproved, continuing } = request.query;
 
-        const trendingAnimeArray = trendingAnimeData.slice(0, 20).map(anime => ({
+    // Define allowed filter values & validate
+    const allowedFilters = ["tv", "movie", "ova", "special", "ona", "music"];
+
+    if (filter && !allowedFilters.includes(filter)) {
+        return response.status(400).send({ error: `Invalid filter value: "${filter}". Allowed values are: ${allowedFilters.join(", ")}` });
+    }
+
+    try {
+        let trendingAnimeUrl = `${URLs.jikan}/seasons/now?page=${page}&limit=${limit}`;
+
+        // Add filters if provided
+        if (filter) {
+            trendingAnimeUrl += `&filter=${filter}`;
+        }
+        if (sfw) {
+            trendingAnimeUrl += `&sfw`;
+        }
+        if (unapproved) {
+            trendingAnimeUrl += `&unapproved`;
+        }
+        if (continuing) {
+            trendingAnimeUrl += `&continuing`;
+        }
+
+        const trending = await axios.get(trendingAnimeUrl);
+        const trendingAnimeData = trending.data;
+
+        // Check if the requested page exceeds the last visible page
+        if (page > trendingAnimeData.pagination.last_visible_page) {
+            return response.status(404).json({
+                pagination: {
+                    current_page: page,
+                    last_visible_page: trendingAnimeData.pagination.last_visible_page,
+                    has_next_page: false,
+                    items: {
+                        count: 0,
+                        total: 0,
+                        per_page: limit
+                    }
+                },
+                results: [],
+                message: "No results found for the requested page."
+            });
+        }
+
+        const trendingAnimeArray = trendingAnimeData.data.slice(0, limit).map(anime => ({
             mal_id: anime.mal_id,
             mal_url: anime.url,
             images: [
@@ -200,10 +250,26 @@ app.get("/trending-anime", async (request, response) => {
             explicit_genres: anime.explicit_genres.map(genre => genre.name)
         }));
 
-        response.send(trendingAnimeArray);
+        const paginationInfo = {
+            current_page: page,
+            last_visible_page: trendingAnimeData.pagination.last_visible_page,
+            has_next_page: trendingAnimeData.pagination.has_next_page,
+            items: {
+                count: trendingAnimeData.pagination.items.count,
+                total: trendingAnimeData.pagination.items.total,
+                per_page: limit
+            }
+        };
+
+        const responseData = {
+            pagination: paginationInfo,
+            results: trendingAnimeArray
+        };
+
+        logger.info(`Fetched trending anime with query params: page=${page}, limit=${limit}, filter=${filter}, at ${new Date().toISOString()}`);
+        response.send(responseData);
     } catch (err) {
-        console.error("Error fetching trending anime:", err);
-        response.status(500).send("Error fetching trending anime.");
+        handleError(err, response);
     }
 });
 
