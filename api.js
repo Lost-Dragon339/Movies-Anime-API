@@ -12,11 +12,11 @@ const PORT = process.env.PORT || 5000;
 
 export const URLs = {
     tmdb: "https://api.themoviedb.org/3",
-    image: "https://image.tmdb.org/t/p/w1920",
+    image: "https://image.tmdb.org/t/p/w1280",
     jikan: "https://api.jikan.moe/v4"
 };
 
-const imageUrl = "https://image.tmdb.org/t/p/w1920";
+const imageUrl = "https://image.tmdb.org/t/p/w1280";
 
 const baseJikanUrl = "https://api.jikan.moe/v4";
 
