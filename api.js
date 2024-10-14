@@ -54,8 +54,7 @@ app.get("/trending-movies", async (request, response) => {
 
         response.send(trendingMovieArray);
     } catch (err) {
-        console.error("Error fetching trending movies:", err);
-        response.status(500).send("Error fetching trending movies.");
+        handleError(err, response);
     }
 });
 
@@ -96,8 +95,7 @@ app.get("/popular-tv", async (request, response) => {
 
         response.send(popularTVArray);
     } catch (err) {
-        console.error("Error fetching trending tv:", err);
-        response.status(500).send("Error fetching trending tv.");
+        handleError(err, response);
     }
 });
 
@@ -118,8 +116,7 @@ app.get("/popular-movies", async (request, response) => {
 
         response.send(popularMovieArray);
     } catch (err) {
-        console.error("Error fetching popular movies:", err);
-        response.status(500).send("Error fetching popular movies.");
+        handleError(err, response);
     }
 });
 
@@ -139,8 +136,7 @@ app.get("/upcoming-movies", async (request, response) => {
 
         response.send(upcomingMovieArray);
     } catch (err) {
-        console.error("Error fetching upcoming movies:", err);
-        response.status(500).send("Error fetching upcoming movies.");
+        handleError(err, response);
     }
 });
 
@@ -276,7 +272,7 @@ app.get("/trending/anime", async (request, response) => {
 /* =============================================== */
 /*                  Popular anime                  */
 /* =============================================== */
-app.get("/popular-anime", async (request, response) => {
+app.get("/popular/anime", async (request, response) => {
     try {
         const popularAnimeUrl = `${baseJikanUrl}/top/anime`;
         const popular = await axios.get(popularAnimeUrl);
@@ -320,15 +316,14 @@ app.get("/popular-anime", async (request, response) => {
 
         response.send(popularAnimeArray);
     } catch (err) {
-        console.error("Error fetching popular anime:", err);
-        response.status(500).send("Error fetching popular anime.");
+        handleError(err, response);
     }
 });
 
 /* =============================================== */
 /*                  Upcoming anime                 */
 /* =============================================== */
-app.get("/upcoming-anime", async (request, response) => {
+app.get("/upcoming/anime", async (request, response) => {
     try {
         const upcomingAnimeUrl = `${baseJikanUrl}/seasons/upcoming`;
         const upcoming = await axios.get(upcomingAnimeUrl);
@@ -372,19 +367,27 @@ app.get("/upcoming-anime", async (request, response) => {
 
         response.send(upcomingAnimeArray);
     } catch (err) {
-        console.error("Error fetching popular anime:", err);
-        response.status(500).send("Error fetching popular anime.");
+        handleError(err, response);
     }
-});
-
-app.get("/search-anime", async (request, response) => {
-    const query = request.query.q; // Get the search query from the query parameters
-    console.log(`Searching for anime: ${query}`);
-    // Replace with the actual Kitsu API call
-    response.send(`Search results for anime: ${query}`);
 });
 
 // Start the server
 app.listen(PORT, () => {
     console.log(`Listening on port ${PORT}`);
 });
+
+/* ============================================ */
+/*                 Handle Error                 */
+/* ============================================ */
+function handleError(err, response) {
+    if (err.response) {
+        logger.error(`API Error: ${err.response.status} - ${JSON.stringify(err.response.data)}`);
+        response.status(err.response.status).send("Error fetching data from API.");
+    } else if (err.request) {
+        logger.error('No response received from API:', err.request);
+        response.status(500).send("No response received from API.");
+    } else {
+        logger.error(`Error: ${err.message}`);
+        response.status(500).send("Internal Server Error.");
+    }
+}
