@@ -19,6 +19,12 @@ export const URLs = {
 const imageUrl = "https://image.tmdb.org/t/p/w500";
 const baseJikanUrl = "https://api.jikan.moe/v4";
 
+cors({
+    origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : "*",
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+});
+
 const options = {
     method: 'GET',
     headers: {
